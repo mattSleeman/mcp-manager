@@ -5,7 +5,6 @@ import AppKit
 struct ServersView: View {
     @EnvironmentObject var configService: ConfigService
     @State private var expandedServer: String? = nil
-    @State private var serverToDelete: MCPServer? = nil
     @State private var searchText = ""
 
     var filteredServers: [MCPServer] {
@@ -74,7 +73,7 @@ struct ServersView: View {
                                     openEditWindow(for: server)
                                 },
                                 onDelete: {
-                                    serverToDelete = server
+                                    showDeleteConfirmation(for: server)
                                 }
                             )
                             Divider().padding(.leading, 16)
@@ -111,16 +110,21 @@ struct ServersView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
         }
-        .alert("Delete Server", isPresented: .constant(serverToDelete != nil), presenting: serverToDelete) { server in
-            Button("Cancel", role: .cancel) {
-                serverToDelete = nil
-            }
-            Button("Delete", role: .destructive) {
-                configService.removeServer(server)
-                serverToDelete = nil
-            }
-        } message: { server in
-            Text("Are you sure you want to delete '\(server.name)'? This cannot be undone.")
+    }
+    
+    // MARK: - Delete Confirmation
+    
+    private func showDeleteConfirmation(for server: MCPServer) {
+        let alert = NSAlert()
+        alert.messageText = "Delete Server"
+        alert.informativeText = "Are you sure you want to delete '\(server.name)'? This cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Delete")
+        alert.addButton(withTitle: "Cancel")
+        
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            configService.removeServer(server)
         }
     }
     
