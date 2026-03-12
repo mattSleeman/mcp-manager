@@ -11,7 +11,6 @@ struct AddServerView: View {
     @State private var args = ""
     @State private var url = ""
     @State private var envVars: [EnvVar] = []
-    @State private var validationError: String?
 
     private var serverTypes = ["Local (stdio)", "HTTP", "SSE"]
     
@@ -36,194 +35,157 @@ struct AddServerView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
-                Text(editingServer == nil ? "Add Server" : "Edit Server")
-                    .font(.headline)
-                    .padding(.bottom, 2)
+        VStack(alignment: .leading, spacing: 10) {
+            Text(editingServer == nil ? "Add Server" : "Edit Server")
+                .font(.headline)
+                .padding(.bottom, 2)
 
-                // Name
+            // Name
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Name").font(.caption).foregroundColor(.secondary)
+                TextField("e.g. my-server", text: $name)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(.body, design: .monospaced))
+                    .disabled(editingServer != nil)
+            }
+
+            // Type
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Type").font(.caption).foregroundColor(.secondary)
+                Picker("", selection: $serverTypeIndex) {
+                    ForEach(0..<serverTypes.count, id: \.self) { i in
+                        Text(serverTypes[i]).tag(i)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+
+            // Conditional fields
+            if serverTypeIndex == 0 {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Name").font(.caption).foregroundColor(.secondary)
-                    TextField("e.g. my-server", text: $name)
+                    Text("Command").font(.caption).foregroundColor(.secondary)
+                    TextField("e.g. npx", text: $command)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.body, design: .monospaced))
-                        .disabled(editingServer != nil)
                 }
-
-                // Type
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Type").font(.caption).foregroundColor(.secondary)
-                    Picker("", selection: $serverTypeIndex) {
-                        ForEach(0..<serverTypes.count, id: \.self) { i in
-                            Text(serverTypes[i]).tag(i)
-                        }
-                    }
-                    .pickerStyle(.segmented)
+                    Text("Arguments (space-separated, use quotes for spaces)").font(.caption).foregroundColor(.secondary)
+                    TextField("e.g. -y @modelcontextprotocol/server-filesystem /tmp", text: $args)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(.body, design: .monospaced))
                 }
-
-                // Conditional fields
-                if serverTypeIndex == 0 {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Command").font(.caption).foregroundColor(.secondary)
-                        TextField("e.g. npx", text: $command)
-                            .textFieldStyle(.roundedBorder)
-                            .font(.system(.body, design: .monospaced))
-                    }
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Arguments (space-separated, use quotes for spaces)").font(.caption).foregroundColor(.secondary)
-                        TextField("e.g. -y @modelcontextprotocol/server-filesystem /tmp", text: $args)
-                            .textFieldStyle(.roundedBorder)
-                            .font(.system(.body, design: .monospaced))
-                    }
-                } else {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("URL").font(.caption).foregroundColor(.secondary)
-                        TextField("e.g. http://localhost:3000", text: $url)
-                            .textFieldStyle(.roundedBorder)
-                            .font(.system(.body, design: .monospaced))
-                    }
-                }
-                
-                // Environment Variables
+            } else {
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Environment Variables").font(.caption).foregroundColor(.secondary)
-                        Spacer()
-                        Button {
-                            envVars.append(EnvVar(key: "", value: ""))
-                        } label: {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.caption)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    
-                    if !envVars.isEmpty {
-                        VStack(spacing: 4) {
-                            ForEach(envVars) { envVar in
-                                HStack(spacing: 4) {
-                                    TextField("KEY", text: Binding(
-                                        get: { envVar.key },
-                                        set: { newValue in
-                                            if let idx = envVars.firstIndex(where: { $0.id == envVar.id }) {
-                                                envVars[idx].key = newValue
-                                            }
-                                        }
-                                    ))
-                                    .textFieldStyle(.roundedBorder)
-                                    .font(.system(.caption, design: .monospaced))
-                                    .frame(width: 100)
-                                    
-                                    Text("=").font(.caption).foregroundColor(.secondary)
-                                    
-                                    TextField("value", text: Binding(
-                                        get: { envVar.value },
-                                        set: { newValue in
-                                            if let idx = envVars.firstIndex(where: { $0.id == envVar.id }) {
-                                                envVars[idx].value = newValue
-                                            }
-                                        }
-                                    ))
-                                    .textFieldStyle(.roundedBorder)
-                                    .font(.system(.caption, design: .monospaced))
-                                    
-                                    Button {
-                                        envVars.removeAll { $0.id == envVar.id }
-                                    } label: {
-                                        Image(systemName: "minus.circle.fill")
-                                            .foregroundColor(.red)
-                                            .font(.caption)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                        }
-                    }
+                    Text("URL").font(.caption).foregroundColor(.secondary)
+                    TextField("e.g. http://localhost:3000", text: $url)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(.body, design: .monospaced))
                 }
-                
-                // Validation error
-                if let error = validationError {
-                    HStack {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.red)
-                            .font(.caption)
-                        Text(error)
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                // Buttons
+            }
+            
+            // Environment Variables
+            VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Button("Cancel") {
-                        onDismiss()
+                    Text("Environment Variables").font(.caption).foregroundColor(.secondary)
+                    Spacer()
+                    Button {
+                        envVars.append(EnvVar(key: "", value: ""))
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.caption)
                     }
                     .buttonStyle(.plain)
-                    .foregroundColor(.secondary)
-
-                    Spacer()
-
-                    Button(editingServer == nil ? "Add Server" : "Save Changes") {
-                        addServer()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!isValid)
                 }
-                .padding(.top, 4)
+                
+                if !envVars.isEmpty {
+                    ForEach($envVars) { $envVar in
+                        HStack(spacing: 4) {
+                            TextField("KEY", text: $envVar.key)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.system(.caption, design: .monospaced))
+                                .frame(width: 100)
+                            
+                            Text("=").font(.caption).foregroundColor(.secondary)
+                            
+                            TextField("value", text: $envVar.value)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.system(.caption, design: .monospaced))
+                            
+                            Button {
+                                envVars.removeAll { $0.id == envVar.id }
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .foregroundColor(.red)
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
             }
-            .padding(16)
+            
+            Spacer()
+            
+            // Buttons
+            HStack {
+                Button("Cancel") {
+                    onDismiss()
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.secondary)
+
+                Spacer()
+
+                Button(editingServer == nil ? "Add Server" : "Save Changes") {
+                    addServer()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(.top, 4)
         }
-        .frame(maxHeight: 400)
-        .background(Color(NSColor.windowBackgroundColor).opacity(0.5))
-        .cornerRadius(8)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-        )
-        .onChange(of: name) { _ in validate() }
-        .onChange(of: command) { _ in validate() }
-        .onChange(of: url) { _ in validate() }
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
-    private func validate() {
-        validationError = nil
-        
+    private func addServer() {
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
-        if trimmedName.isEmpty {
-            validationError = "Name is required"
-            return
-        }
+        guard !trimmedName.isEmpty else { return }
         
         if editingServer == nil && configService.servers.contains(where: { $0.name == trimmedName }) {
-            validationError = "Server name already exists"
             return
         }
         
         if serverTypeIndex == 0 {
-            if command.trimmingCharacters(in: .whitespaces).isEmpty {
-                validationError = "Command is required"
-                return
-            }
+            guard !command.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         } else {
             let trimmedURL = url.trimmingCharacters(in: .whitespaces)
-            if trimmedURL.isEmpty {
-                validationError = "URL is required"
-                return
-            }
-            if URL(string: trimmedURL) == nil {
-                validationError = "Invalid URL format"
-                return
-            }
+            guard !trimmedURL.isEmpty, URL(string: trimmedURL) != nil else { return }
         }
+        
+        var config: [String: Any] = [:]
+
+        if serverTypeIndex == 0 {
+            config["command"] = command.trimmingCharacters(in: .whitespaces)
+            let argList = parseArguments(args.trimmingCharacters(in: .whitespaces))
+            if !argList.isEmpty {
+                config["args"] = argList
+            }
+        } else {
+            config["url"] = url.trimmingCharacters(in: .whitespaces)
+        }
+        
+        let envDict = Dictionary(uniqueKeysWithValues: envVars
+            .filter { !$0.key.trimmingCharacters(in: .whitespaces).isEmpty }
+            .map { ($0.key.trimmingCharacters(in: .whitespaces), $0.value) })
+        
+        if !envDict.isEmpty {
+            config["env"] = envDict
+        }
+
+        configService.addServer(name: trimmedName, config: config)
+        onDismiss()
     }
     
-    private var isValid: Bool {
-        validate()
-        return validationError == nil
-    }
-
     private func parseArguments(_ input: String) -> [String] {
         var result: [String] = []
         var current = ""
@@ -264,33 +226,5 @@ struct AddServerView: View {
         
         return result
     }
-
-    private func addServer() {
-        guard isValid else { return }
-        
-        var config: [String: Any] = [:]
-
-        if serverTypeIndex == 0 {
-            config["command"] = command.trimmingCharacters(in: .whitespaces)
-            let argList = parseArguments(args.trimmingCharacters(in: .whitespaces))
-            if !argList.isEmpty {
-                config["args"] = argList
-            }
-        } else if serverTypeIndex == 1 {
-            config["url"] = url.trimmingCharacters(in: .whitespaces)
-        } else {
-            config["url"] = url.trimmingCharacters(in: .whitespaces)
-        }
-        
-        let envDict = Dictionary(uniqueKeysWithValues: envVars
-            .filter { !$0.key.trimmingCharacters(in: .whitespaces).isEmpty }
-            .map { ($0.key.trimmingCharacters(in: .whitespaces), $0.value) })
-        
-        if !envDict.isEmpty {
-            config["env"] = envDict
-        }
-
-        configService.addServer(name: name.trimmingCharacters(in: .whitespaces), config: config)
-        onDismiss()
-    }
 }
+

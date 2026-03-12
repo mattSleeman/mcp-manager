@@ -1,10 +1,10 @@
 import SwiftUI
+import SwiftUI
+import AppKit
 
 struct ServersView: View {
     @EnvironmentObject var configService: ConfigService
     @State private var expandedServer: String? = nil
-    @State private var showingAddServer = false
-    @State private var editingServer: MCPServer? = nil
     @State private var serverToDelete: MCPServer? = nil
     @State private var searchText = ""
 
@@ -71,8 +71,7 @@ struct ServersView: View {
                                     }
                                 },
                                 onEdit: {
-                                    editingServer = server
-                                    showingAddServer = false
+                                    openEditWindow(for: server)
                                 },
                                 onDelete: {
                                     serverToDelete = server
@@ -85,40 +84,18 @@ struct ServersView: View {
                 .frame(maxHeight: 300)
             }
 
-            // Inline add/edit server form
-            if showingAddServer || editingServer != nil {
-                Divider()
-                AddServerView(onDismiss: {
-                    withAnimation {
-                        showingAddServer = false
-                        editingServer = nil
-                    }
-                }, editingServer: editingServer)
-                .padding(12)
-            }
-
             Divider()
 
             // Bottom toolbar
             HStack {
                 Button {
-                    withAnimation {
-                        if showingAddServer || editingServer != nil {
-                            showingAddServer = false
-                            editingServer = nil
-                        } else {
-                            showingAddServer = true
-                        }
-                    }
+                    openAddWindow()
                 } label: {
-                    Label(
-                        (showingAddServer || editingServer != nil) ? "Cancel" : "Add Server",
-                        systemImage: (showingAddServer || editingServer != nil) ? "xmark" : "plus"
-                    )
-                    .font(.callout)
+                    Label("Add Server", systemImage: "plus")
+                        .font(.callout)
                 }
                 .buttonStyle(.plain)
-                .foregroundColor((showingAddServer || editingServer != nil) ? .secondary : .accentColor)
+                .foregroundColor(.accentColor)
 
                 Spacer()
 
@@ -145,6 +122,56 @@ struct ServersView: View {
         } message: { server in
             Text("Are you sure you want to delete '\(server.name)'? This cannot be undone.")
         }
+    }
+    
+    // MARK: - Window Management
+    
+    private func openAddWindow() {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 450, height: 550),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Add Server"
+        window.center()
+        window.isReleasedWhenClosed = false
+        
+        let hostingView = NSHostingView(rootView: 
+            AddServerView(onDismiss: {
+                window.close()
+            }, editingServer: nil)
+            .environmentObject(configService)
+            .padding()
+        )
+        
+        window.contentView = hostingView
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+    
+    private func openEditWindow(for server: MCPServer) {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 450, height: 550),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Edit Server"
+        window.center()
+        window.isReleasedWhenClosed = false
+        
+        let hostingView = NSHostingView(rootView: 
+            AddServerView(onDismiss: {
+                window.close()
+            }, editingServer: server)
+            .environmentObject(configService)
+            .padding()
+        )
+        
+        window.contentView = hostingView
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 }
 
